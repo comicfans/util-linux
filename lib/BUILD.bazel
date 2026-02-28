@@ -3,18 +3,18 @@ load("@rules_cc_autoconf//autoconf:autoconf.bzl", "autoconf")
 load("@rules_cc_autoconf//autoconf:autoconf_srcs.bzl", "autoconf_srcs")
 load("@rules_cc_autoconf//autoconf:checks.bzl", "checks")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-load("@rules_cc//cc:cc_library.bzl", "cc_static_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 
 bool_flag(name = "build_plymouth_support",
-          build_setting_default = False,
-          doc = "support plymouth feature in sulogin and agetty")
+          build_setting_default = False)
 
-config_setting(name="build_plymouth_support",
-flags = ["--//:build_plymouth_support"],
+config_setting(name="plymouth_support",
+               flag_values = {"//lib:build_plymouth_support":"True"},
 )
 
 
-lib_common_sources = '''
+lib_common_sources = [s.strip() for s in '''
 	blkdev.c
 	buffer.c
 	canonicalize.c
@@ -50,7 +50,7 @@ lib_common_sources = '''
 	ttyutils.c
 	xxhash.c
 	configs.c
-'''.split()
+'''.splitlines() if s.strip()]
 
 
 idcache_c = 'idcache.c'
@@ -61,12 +61,14 @@ strutils_c = 'strutils.c'
 strv_c = 'strv.c'
 pager_c = 'pager.c'
 
-lib_common_sources += [idcache_c,
-                       randutils_c,
-                       md5_c,
-                       sha1_c,
-                       strutils_c,
-                       strv_c]
+lib_common_sources += [
+                       # idcache_c, duplicated
+                       # randutils_c, duplicated
+                       # md5_c, duplicated
+                       # sha1_c, duplicated
+                       # strutils_c, duplicated
+                       #strv_c duplicated
+]
 
 monotonic_c = 'monotonic.c'
 timer_c = 'timer.c'
@@ -82,20 +84,23 @@ lib_common_sources += select({
 })
 
 lib_common_sources += select({
-    ":build_plymouth_support": ['plymouth-ctrl.c'],
+    ":plymouth_support": ['plymouth-ctrl.c'],
     "//conditions:default": [],
 })
 
 
-autoconf_srcs(name = "gen_langinfo_c",srcs = {
+autoconf_srcs(name = "gen_langinfo_c",
+srcs = {
     "langinfo.c": "HAVE_LANGINFO_H",
     "cpuset.c":"HAVE_CPU_SET_T",
-})
+},
+deps = ["//feature_test"])
 
-autoconf(name = "feature_test",
+autoconf(name = "open_at_dirfd_test",
          checks = [
              checks.AC_CHECK_FUNC("openat"),
-             checks.AC_CHECK_FUNC("dirfd", define = "no_dirfd_func", if_true = 0, if_false = 1),
+             checks.AC_CHECK_FUNC("dirfd", define = "HAVE_DIRFD"),
+             checks.AC_DEFINE("no_dirfd", condition = "HAVE_DIRFD", if_true = None, if_false = "1"),
 
              # meson check_header_symbol meson/mesonbuild/compilers/c.py:88
              checks.AC_TRY_LINK(code = '''
@@ -106,8 +111,8 @@ autoconf(name = "feature_test",
                                 #endif
                                 return 0;
                                 }
-             ''', define = "no_dirfd_sym", if_true = 0, ifalse = 1),
-             checks.AC_DEFINE("HAVE_OPENAT_AND_DIRFD", requires = ["HAVE_OPENAT","!no_dirfd_func", "!no_dirfd_sym"])
+             ''', define = "no_dirfd_sym", if_true = None, if_false = "1"),
+             checks.AC_DEFINE("HAVE_OPENAT_AND_DIRFD", requires = ["HAVE_OPENAT","!no_dirfd", "!no_dirfd_sym"])
          ],
 )
 
@@ -118,11 +123,12 @@ autoconf_srcs(
         "procfs.c": "HAVE_OPENAT_AND_DIRFD",
         "sysfs.c": "HAVE_OPENAT_AND_DIRFD",
     },
-    deps = ["feature_test"],
+    deps = ["open_at_dirfd_test"],
 )
 
-cc_static_library(
+cc_library(
     name = "common",
     srcs = lib_common_sources + ["gen_lang_info", "gen_feature_test_src"],
     deps = ["//include:dir_include"],
+    linkstatic = True,
 )

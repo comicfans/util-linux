@@ -54,6 +54,7 @@ lib_common_sources += [idcache_c,
 monotonic_c = files('monotonic.c')
 timer_c = files('timer.c')
 swapprober_c = files('swapprober.c')
+
 pty_session_c = files('pty-session.c')
 ismounted_c = files('ismounted.c')
 exec_shell_c = files('exec_shell.c')

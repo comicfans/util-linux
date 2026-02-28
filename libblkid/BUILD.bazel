@@ -126,7 +126,7 @@ lib_blkid_sources = [s.strip() for s in '''
 
   src/topology/topology.c
   src/topology/topology.h
-'''.splitlines()]
+'''.splitlines() if s.strip()]
 
 
 lib_blkid_sources += select(
@@ -145,7 +145,10 @@ lib_blkid_sources += select(
 
 
 
-cc_static_library("libblkid_static", 
+
+
+
+cc_library(name = "libblkid_shared", 
                   hdrs = ["@util_linux//include:list.h"],
                   srcs = lib_blkid_sources,
                   includes = dir_libblkid,
@@ -155,12 +158,14 @@ cc_static_library("libblkid_static",
                   data =["src/libblkid.sym"]
 )
 
-cc_library("libblkid_shared", 
+cc_library(name = "libblkid_static", 
                   hdrs = ["@util_linux//include:list.h"],
                   srcs = lib_blkid_sources,
                   includes = dir_libblkid,
                   deps = ["@util_linux//include:dir_include",
                           "@util_linux//lib:common"],
                   linkopts = ['-Wl,--version-script=src/libblkid.sym'],
-                  data =["src/libblkid.sym"]
+                  data =["src/libblkid.sym"],
+                  linkstatic = True,
 )
+

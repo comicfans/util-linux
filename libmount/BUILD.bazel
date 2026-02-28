@@ -5,6 +5,7 @@ load("@rules_cc_autoconf//autoconf:autoconf_hdr.bzl", "autoconf_hdr")
 load("@rules_cc_autoconf//autoconf:meson_hdr.bzl", "meson_hdr")
 load("@rules_cc_autoconf//autoconf:checks.bzl", "checks")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_static_library.bzl", "cc_static_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@util_linux//:version.bzl", "libmount_version")
 
@@ -17,6 +18,8 @@ config_setting(
         ":btrfs": "true",
     },
 )
+
+dir_libmount = [".","src"]
 
 
 [major, minor,patch] = libmount_version.split(".")
@@ -56,9 +59,9 @@ lib_mount_sources = [s.strip() for s in '''
   src/test.c
   src/utils.c
   src/version.c
-'''.splitlines()] + [
-  "@util_linux:include:list_h",
-  "@util_linux:src/monotonic.c",
+'''.splitlines() if s.strip()] + [
+  "@util_linux//include:list_h",
+  "@util_linux//src:monotonic.c",
 ] + select({
     "enable_btrfs": [
         "src/monitor_btrfs.c",
@@ -86,12 +89,16 @@ linux_srcs = [s.strip() for s in '''
     src/context_umount.c
     src/context_mount.c
     src/context.c
-'''.split()]
+'''.splitlines()]
 
-cc_static_library(name = "_mount",
+cc_library(name = "_mount",
 srcs = lib_mount_sources,
-includes = dir_include
-                  deps = ["@util_linux//:include_dir_include"],
+includes = dir_libmount,
+deps = ["@util_linux//include:dir_include"],
 )
 
-cc_static_library(name = "libmount_static", deps = ["_mount", "@util_linux//lib/:common","@libblkid//libblkid_static"], )
+
+
+cc_static_library(name = "libmount_static",
+                deps = ["_mount",
+                "@util_linux//lib:common","@libblkid//:libblkid_static"], )
