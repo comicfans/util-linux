@@ -5,7 +5,6 @@ load("@rules_cc_autoconf//autoconf:checks.bzl", "checks")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-
 bool_flag(name = "build_plymouth_support",
           build_setting_default = False)
 
@@ -79,7 +78,7 @@ exec_shell_c = 'exec_shell.c'
 fileeq_c = 'fileeq.c'
 
 lib_common_sources += select({
-    "@platform//:linux": ['caputils.c','linux_version.c','loopdev.c'],
+    "@platforms//os:linux": ['caputils.c','linux_version.c','loopdev.c'],
     "//conditions:default": [],
 })
 
@@ -89,16 +88,16 @@ lib_common_sources += select({
 })
 
 
-autoconf_srcs(name = "gen_langinfo_c",
+autoconf_srcs(name = "gen_langinfo_cpuset_src",
 srcs = {
     "langinfo.c": "HAVE_LANGINFO_H",
     "cpuset.c":"HAVE_CPU_SET_T",
 },
-deps = ["//feature_test"])
+deps = ["//:feature_test"])
 
 autoconf(name = "open_at_dirfd_test",
          checks = [
-             checks.AC_CHECK_FUNC("openat"),
+             checks.AC_CHECK_FUNC("openat", define = "HAVE_OPENAT"),
              checks.AC_CHECK_FUNC("dirfd", define = "HAVE_DIRFD"),
              checks.AC_DEFINE("no_dirfd", condition = "HAVE_DIRFD", if_true = None, if_false = "1"),
 
@@ -117,7 +116,7 @@ autoconf(name = "open_at_dirfd_test",
 )
 
 autoconf_srcs(
-    name = "gen_feature_test_src",
+    name = "gen_openat_dirfd_src",
     srcs = {
         "path.c": "HAVE_OPENAT_AND_DIRFD",
         "procfs.c": "HAVE_OPENAT_AND_DIRFD",
@@ -128,7 +127,10 @@ autoconf_srcs(
 
 cc_library(
     name = "common",
-    srcs = lib_common_sources + ["gen_lang_info", "gen_feature_test_src"],
+    srcs = lib_common_sources + [":gen_openat_dirfd_src",":gen_langinfo_cpuset_src"],
     deps = ["//include:dir_include"],
     linkstatic = True,
+    visibility = ["//visibility:public"],
 )
+
+exports_files(["monotonic.c"])

@@ -1,7 +1,9 @@
-module(name = "libmount", version = "2.43.0")
+module(name = "libmount", version = "1.1.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "rules_cc_autoconf", version = "0.5.3")
+
+local_path_override(module_name="rules_cc_autoconf",path="../../rules_cc_autoconf")
 
 bazel_dep(name = "libblkid", version = "0.0.0")
 local_path_override(

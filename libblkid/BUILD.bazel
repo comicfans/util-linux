@@ -9,7 +9,7 @@ load("@rules_cc//cc:cc_static_library.bzl", "cc_static_library")
 
 load("@util_linux//:version.bzl", "libblkid_date", "libblkid_version")
 
-dir_libblkid = [".","src"]
+dir_libblkid = ["src"]
 
 autoconf(
     name = "autoconf",
@@ -24,6 +24,10 @@ meson_hdr(
     out = "blkid.h",
     deps = ["autoconf"],
     template = "src/blkid.h.in"
+)
+
+cc_library(name = "blkid_h",
+           hdrs = ["blkid.h"]
 )
 
 lib_blkid_sources = [s.strip() for s in '''
@@ -153,9 +157,11 @@ cc_library(name = "libblkid_shared",
                   srcs = lib_blkid_sources,
                   includes = dir_libblkid,
                   deps = ["@util_linux//include:dir_include",
-                          "@util_linux//lib:common"],
+                          "@util_linux//lib:common",
+                  "blkid_h"],
                   linkopts = ['-Wl,--version-script=src/libblkid.sym'],
-                  data =["src/libblkid.sym"]
+                  data =["src/libblkid.sym"],
+           visibility= ["//visibility:public"],
 )
 
 cc_library(name = "libblkid_static", 
@@ -163,9 +169,10 @@ cc_library(name = "libblkid_static",
                   srcs = lib_blkid_sources,
                   includes = dir_libblkid,
                   deps = ["@util_linux//include:dir_include",
-                          "@util_linux//lib:common"],
+                          "@util_linux//lib:common","blkid_h"],
                   linkopts = ['-Wl,--version-script=src/libblkid.sym'],
                   data =["src/libblkid.sym"],
                   linkstatic = True,
+           visibility= ["//visibility:public"],
 )
 

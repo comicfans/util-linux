@@ -3,11 +3,12 @@ load("@rules_cc_autoconf//autoconf:checks.bzl","checks")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 #feature detect only for libmount
 
-package(default_visibility = ["//lib:__sub_packages__"])
+package(default_visibility = ["//visibility:public"])
 
 autoconf(name = "feature_test",
          checks = [
              checks.AC_CHECK_HEADER("langinfo.h",define = "HAVE_LANGINFO_H"),
+             checks.AC_DEFINE("_D_GNU_SOURCE"),
              checks.AC_CHECK_TYPE("cpu_set_t",compile_defines=["_D_GNU_SOURCE"],
              includes = ["#include <sched.h>"], define = "HAVE_CPU_SET_T"),
          ],

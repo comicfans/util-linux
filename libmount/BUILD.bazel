@@ -19,7 +19,7 @@ config_setting(
     },
 )
 
-dir_libmount = [".","src"]
+dir_libmount = ["src"]
 
 
 [major, minor,patch] = libmount_version.split(".")
@@ -60,11 +60,11 @@ lib_mount_sources = [s.strip() for s in '''
   src/utils.c
   src/version.c
 '''.splitlines() if s.strip()] + [
-  "@util_linux//include:list_h",
-  "@util_linux//src:monotonic.c",
+  "@util_linux//include:list.h",
+  "@util_linux//lib:monotonic.c",
 ] + select({
     "enable_btrfs": [
-        "src/monitor_btrfs.c",
+        "src/btrfs.c",
     ],
     "//conditions:default": [],
 })
