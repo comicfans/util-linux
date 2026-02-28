@@ -93,7 +93,7 @@ srcs = {
     "langinfo.c": "HAVE_LANGINFO_H",
     "cpuset.c":"HAVE_CPU_SET_T",
 },
-deps = ["//:feature_test"])
+deps = ["//:conf"])
 
 autoconf(name = "open_at_dirfd_test",
          checks = [
@@ -128,7 +128,7 @@ autoconf_srcs(
 cc_library(
     name = "common",
     srcs = lib_common_sources + [":gen_openat_dirfd_src",":gen_langinfo_cpuset_src"],
-    deps = ["//include:dir_include"],
+    deps = ["//include:dir_include", "//:config_h"],
     linkstatic = True,
     visibility = ["//visibility:public"],
 )

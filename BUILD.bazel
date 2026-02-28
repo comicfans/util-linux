@@ -1,17 +1,213 @@
 load("@rules_cc_autoconf//autoconf:autoconf.bzl","autoconf")
 load("@rules_cc_autoconf//autoconf:checks.bzl","checks")
+load("@rules_cc_autoconf//autoconf:meson_hdr.bzl","meson_hdr")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//:version.bzl", "version","pc_version", "libblkid_date")
+
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 #feature detect only for libmount
 
 package(default_visibility = ["//visibility:public"])
 
-autoconf(name = "feature_test",
+
+features = ["blkid", "uuid", "lastlog2"]
+
+
+bool_flag(name = "build-libblkid",
+          build_setting_default = True)
+
+bool_flag(name = "build-libuuid",
+          build_setting_default = True)
+
+#TODO , this requires sqlite3
+bool_flag(name = "build-liblastlog2",
+          build_setting_default = False)
+
+bool_flag(name = "login-lastlogin", build_setting_default = True)
+
+[
+config_setting(
+    name = "build_lib{}".format(f),
+    flag_values = {
+        ":build-libblkid": "true",
+    },
+)
+for f in features
+]
+
+config_setting(
+    name = "login_lastlogin",
+    flag_values = {
+        "login-lastlogin": "true"
+    }
+)
+
+features_define = select({
+    "build_libblkid" : [checks.AC_DEFINE("HAVE_LIBBLKID", 1)],
+    "//conditions:default": [checks.AC_DEFINE("HAVE_LIBBLKID", 0)],
+    })+ select({
+        "build_libuuid" : [checks.AC_DEFINE("HAVE_LIBUUID", 1)],
+        "//conditions:default": [checks.AC_DEFINE("HAVE_LIBUUID", 0)],
+    })+ select({
+        "build_liblastlog2" : [checks.AC_DEFINE("HAVE_LIBLASTLOG2", 1)],
+        "//conditions:default": [checks.AC_DEFINE("HAVE_LIBLASTLOG2", 0)],
+    }) + select({
+            "login_lastlogin": [checks.AC_DEFINE("USE_LOGIN_LASTLOG", 1)],
+            "//conditions:default": [checks.AC_DEFINE("USE_LOGIN_LASTLOG", 0)],
+    })
+
+funcs = [s.strip() for s in '''
+        cachestat
+        clearenv
+        close_range
+        copy_file_range
+        __fpurge
+        fpurge
+        __fpending
+        secure_getenv
+        __secure_getenv
+        eaccess
+        err
+        errx
+        explicit_bzero
+        fallocate
+        fnmatch
+        fseeko
+        fsconfig
+        fsmount
+        fsopen
+        fspick
+        fsync
+        getttynam
+        utimensat
+        getauxval
+        getdomainname
+        getdtablesize
+        getexecname
+        getmntinfo
+        getrandom
+        getrlimit
+        getsgnam
+        inotify_init
+        jrand48
+        landlock_create_ruleset
+        landlock_add_rule
+        landlock_restrict_self
+        lchown
+        lgetxattr
+        llistxattr
+        llseek
+        newlocale
+        mkostemp
+        move_mount
+        mount_setattr
+        nanosleep
+        ntp_gettime
+        open_tree
+        personality
+        pidfd_getfd
+        pidfd_open
+        pidfd_send_signal
+        posix_fadvise
+        posix_fallocate
+        prctl
+        qsort_r
+        reallocarray
+        renameat2
+        rpmatch
+        scandirat
+        setprogname
+        sendfile
+        setns
+        setresgid
+        setresuid
+        sched_setattr
+        sched_setscheduler
+        sigqueue
+        srandom
+        statx
+        strnchr
+        strndup
+        strnlen
+        strtod_l
+        sysconf
+        sysinfo
+        swapon
+        swapoff
+        timegm
+        unshare
+        usleep
+        uselocale
+        vwarnx
+        warn
+        warnx
+        prlimit
+
+        openat
+        fstatat
+        unlinkat
+        ioperm
+        iopl
+        futimens
+        inotify_init1
+        open_memstream
+        reboot
+        getusershell
+        fts_open
+'''.splitlines() if s.strip()] 
+
+
+func_checks = [
+    checks.AC_CHECK_FUNC(func, define = "HAVE_{}".format(func.upper()))
+    for func in funcs
+]
+
+
+
+autoconf(name = "conf",
          checks = [
+
+             checks.AC_DEFINE("PACKAGE", 'util-linux'),
+             checks.AC_DEFINE("PACKAGE_VERSION", version),
+             checks.AC_DEFINE("PACKAGE_STRING","util-linux {}".format(version)),
+             checks.AC_DEFINE("LIBBLKID_VERSION", "version"),
+             checks.AC_DEFINE("LIBBLKID_DATE", libblkid_date),
+
+             #TODO these path might be incorrect in bazel
+             checks.AC_DEFINE("bindir", "/usr/local/bin"),
+             checks.AC_DEFINE("sbindir", "/usr/local/sbin"),
+             checks.AC_DEFINE("runstatedir", "/run"),
+             checks.AC_DEFINE("localstatedir", "/var"),
+             checks.AC_DEFINE("sysconfdir", "/usr/local/etc"),
+             checks.AC_DEFINE("usrbin_execdir", "/usr/local/bin"),
+             checks.AC_DEFINE("usrsbin_execdir", "/usr/local/sbin"),
+             checks.AC_DEFINE("docdir", "/usr/local/share/doc/util-linux"),
+
+             checks.AC_DEFINE("_PATH_SYSCONFDIR","/usr/local/etc"),
+             checks.AC_DEFINE("_PATH_SYSCONFSTATICDIR","/usr/local/lib"),
+             checks.AC_DEFINE("_PATH_RUNSTATEDIR","/run"),
+             checks.AC_DEFINE("_LOCALSTATEDIR","/var"),
+             checks.AC_DEFINE("CONFIG_ADJTIME_PATH","/etc/adjtime"),
+
+             checks.AC_DEFINE("_PATH_VENDORDIR",""),
+             checks.AC_DEFINE("USE_VENDORDIR","", requires = ["_PATH_VENDORDIR!=''"]),
+
+
              checks.AC_CHECK_HEADER("langinfo.h",define = "HAVE_LANGINFO_H"),
              checks.AC_DEFINE("_D_GNU_SOURCE"),
              checks.AC_CHECK_TYPE("cpu_set_t",compile_defines=["_D_GNU_SOURCE"],
              includes = ["#include <sched.h>"], define = "HAVE_CPU_SET_T"),
-         ],
+             checks.AC_CHECK_TYPE("struct fanotify_event_info_header",includes = ["#include <linux/fanotify.h>"], define = "HAVE_STRUCT_FANOTIFY_EVENT_INFO_HEADER"),
+             checks.AC_CHECK_TYPE("struct mount_attr", includes = ["#include <linux/mount.h>"])
+         ]+features_define+func_checks,
+)
+
+meson_hdr(name = "gen_config", deps = ["conf"], out = "config.h")
+
+cc_library(name = "config_h", 
+hdrs = ["config.h"],
+           copts = ["-include config.h"]
 )
 
 bzl_library("version", srcs = ["version.bzl"], visibility = ["//visibility:public"])
