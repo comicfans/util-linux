@@ -199,7 +199,15 @@ autoconf(name = "conf",
              checks.AC_CHECK_TYPE("cpu_set_t",compile_defines=["_D_GNU_SOURCE"],
              includes = ["#include <sched.h>"], define = "HAVE_CPU_SET_T"),
              checks.AC_CHECK_TYPE("struct fanotify_event_info_header",includes = ["#include <linux/fanotify.h>"], define = "HAVE_STRUCT_FANOTIFY_EVENT_INFO_HEADER"),
-             checks.AC_CHECK_TYPE("struct mount_attr", includes = ["#include <linux/mount.h>"])
+             checks.AC_CHECK_TYPE("struct mount_attr", includes = ["#include <linux/mount.h>"], define = "HAVE_STRUCT_MOUNT_ATTR"),
+             checks.AC_DEFINE("HAVE_MOUNTFD_API", requires = ["HAVE_STRUCT_MOUNT_ATTR"]),
+             checks.AC_CHECK_TYPE("struct statx", includes = ["#include <sys/stat.h>", define = "HAVE_STRUCT_STATX"]),
+             checks.AC_CHECK_MEMBER("struct statx.stx_mnt_id", includes = ["#include <sys/stat.h>", define = "HAVE_STRUCT_STATX_STX_MNT_ID"]),
+             checks.AC_CHECK_TYPE("struct statmount", includes = ["#include <linux/mount.h>"],define = "SYS_statmount=__NR_statmount"),
+             # TODO SYS_Listmount
+             checks.AC_DEFINE('HAVE_LIBMOUNT'),
+             checks.AC_DEFINE('USE_LIBMOUNT_SUPPORT_NAMESPACES'),
+             checks.AC_DEFINE('USE_LIBMOUNT_SUPPORT_FSCONFIG'),
          ]+features_define+func_checks,
 )
 
